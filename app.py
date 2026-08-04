@@ -23,7 +23,7 @@ def webhook():
     if not data:
         return jsonify({"status": "error", "message": "No JSON payload received"}), 400
 
-    print(f"Received webhook: {data}")
+    print(f"Received JSON webhook: {data}")
 
     symbol = data.get("symbol", "QQQ")
     action = data.get("action", "buy")
@@ -33,17 +33,42 @@ def webhook():
     sl_price = data.get("sl_price")
     regime = data.get("regime", "UNKNOWN")
 
-    # Log to local DB
     trade_id = log_trade(symbol, action, qty, entry_price, tp_price, sl_price, regime)
-
-    # Place trade on Alpaca
     alpaca_res = trader.execute_signal(symbol, action, qty, tp_price, sl_price)
 
-    return jsonify({
-        "status": "received",
-        "trade_id": trade_id,
-        "alpaca_response": alpaca_res
-    }), 200
+    return jsonify({"status": "received", "trade_id": trade_id, "alpaca_response": alpaca_res}), 200
+
+@app.route("/email-webhook", methods=["POST"])
+def email_webhook():
+    import json, re
+    form_data = request.form
+    plain_text = form_data.get("plain", "") or form_data.get("html", "")
+    
+    print(f"Received email payload: {plain_text[:200]}...")
+
+    # Extract JSON object from email body text
+    json_match = re.search(r'\{.*\}', plain_text, re.DOTALL)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(0))
+            symbol = data.get("symbol", "QQQ")
+            action = data.get("action", "buy")
+            qty = data.get("qty", 1)
+            entry_price = data.get("price", 0.0)
+            tp_price = data.get("tp_price")
+            sl_price = data.get("sl_price")
+            regime = data.get("regime", "UNKNOWN")
+
+            trade_id = log_trade(symbol, action, qty, entry_price, tp_price, sl_price, regime)
+            alpaca_res = trader.execute_signal(symbol, action, qty, tp_price, sl_price)
+
+            return jsonify({"status": "success", "source": "email", "trade_id": trade_id, "alpaca": alpaca_res}), 200
+        except Exception as e:
+            print(f"Error parsing email JSON: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 400
+
+    return jsonify({"status": "ignored", "message": "No valid JSON payload found in email body"}), 200
+
 
 @app.route("/api/stats", methods=["GET"])
 def api_stats():
