@@ -1,0 +1,5 @@
+flask
+gunicorn
+alpaca-py
+requests
+python-dotenv

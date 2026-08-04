@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView → Alpaca Live Dashboard</title>
+    <style>
+        :root {
+            --bg: #121214;
+            --card-bg: #1e1e24;
+            --border: #2e2e38;
+            --text: #e0e0e6;
+            --accent-green: #089981;
+            --accent-red: #f23645;
+            --muted: #808090;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+        h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .badge {
+            background: #00e5ff22;
+            color: #00e5ff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            border: 1px solid #00e5ff44;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+        }
+        .card-title { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+        .card-value { font-size: 26px; font-weight: bold; }
+        .green { color: var(--accent-green); }
+        .red { color: var(--accent-red); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        th { background: #16161c; color: var(--muted); font-weight: 500; }
+        tr:hover { background: #25252e; }
+        .action-buy { color: var(--accent-green); font-weight: bold; }
+        .action-sell { color: var(--accent-red); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 TradingView ➔ Alpaca Automation</h1>
+        <span class="badge">Live Webhook Receiver</span>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="card-title">Total Signals Received</div>
+            <div class="card-value">{{ stats.total_trades }}</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Win Rate</div>
+            <div class="card-value {% if stats.win_rate >= 50 %}green{% else %}red{% endif %}">
+                {{ stats.win_rate }}%
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Total PnL</div>
+            <div class="card-value {% if stats.total_pnl >= 0 %}green{% else %}red{% endif %}">
+                ${{ stats.total_pnl }}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Wins / Losses</div>
+            <div class="card-value">{{ stats.wins }}W / {{ stats.losses }}L</div>
+        </div>
+    </div>
+
+    <h2>Signal Log & Trade History</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>Symbol</th>
+                <th>Action</th>
+                <th>Qty</th>
+                <th>Entry Price</th>
+                <th>TP / SL Target</th>
+                <th>Regime</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in trades %}
+            <tr>
+                <td>#{{ t.id }}</td>
+                <td>{{ t.timestamp }}</td>
+                <td><strong>{{ t.symbol }}</strong></td>
+                <td class="action-{{ t.action|lower }}">{{ t.action|upper }}</td>
+                <td>{{ t.qty }}</td>
+                <td>${{ "%.2f"|format(t.entry_price) }}</td>
+                <td>
+                    {% if t.tp_price %}TP: ${{ "%.2f"|format(t.tp_price) }} | SL: ${{ "%.2f"|format(t.sl_price) }}{% else %}-{% endif %}
+                </td>
+                <td><span class="badge" style="background:#333; color:#fff; border:none;">{{ t.regime }}</span></td>
+                <td>{{ t.status }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" style="text-align: center; color: var(--muted); padding: 30px;">
+                    No webhooks received yet. Waiting for signals from TradingView...
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        // Auto-refresh every 15 seconds to update trades list
+        setTimeout(() => location.reload(), 15000);
+    </script>
+</body>
+</html>
